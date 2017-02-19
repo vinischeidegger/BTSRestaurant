@@ -1,5 +1,6 @@
 package org.bts_mdsd.javafoundations;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.List;
 
@@ -13,7 +14,16 @@ public class Main {
 	public static void main(String[] args) {
 		System.out.println("Please select a file, or press enter for the default one [online_order_sample.csv].");
 		
-		
+		String inputFile = System.console().readLine();
+		File varTmpDir = new File(inputFile);
+		int attempts = 0;
+		while(!varTmpDir.exists() && attempts<3) {
+			System.out.println("[" + attempts + 
+					"] Please select a file, or press enter for the default one [online_order_sample.csv].");
+			inputFile = System.console().readLine();
+			varTmpDir = new File(inputFile);
+			attempts++;
+		}
 		
 		String filePath = "online_order_sample.csv";
 		OrderManager ordMan = new OrderManager();
