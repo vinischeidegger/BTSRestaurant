@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.bts_mdsd.javafoundations.model.BTSRestaurantDish;
+import org.bts_mdsd.javafoundations.model.Dish;
 import org.bts_mdsd.javafoundations.model.FileExtract;
 import org.bts_mdsd.javafoundations.model.Order;
 import org.bts_mdsd.javafoundations.service.OrderManager;
@@ -20,7 +21,6 @@ public class Main {
 
 	public static void main(String[] args) throws IOException {
 		System.out.println("Welcome to the BTS Restaurant!");
-		System.out.println("Please chose an option from the menu below:");
 		Map<String,FileExtract> fileContent = new HashMap<String, FileExtract>();
 		
 		String currentFile = "";
@@ -28,6 +28,7 @@ public class Main {
 		String userInput = "";
 		boolean hasLoadedFile = false;
 		while(!userInput.equalsIgnoreCase("x")) {
+			System.out.println("------------------------------------------------------------------\nPlease chose an option from the menu below:");
 			
 			if (currentFile.isEmpty()){
 				System.out.println("\n1. Load a file.");
@@ -91,11 +92,20 @@ public class Main {
 				
 				// Only display stats for files with more than 1 row
 				if(recordNb>0) {
-					System.out.println("The 3 first orders from the file are below:");
 					
-					System.out.println("  [1]: " + ordMan.getOrder(orderList, 0));
-					System.out.println("  [2]: " + ordMan.getOrder(orderList, 1));
-					System.out.println("  [3]: " + ordMan.getOrder(orderList, 2));
+					if(recordNb==1){
+						System.out.println("The only available order from the file is below:");
+						System.out.println("  [1]: " + ordMan.getOrder(orderList, 0));
+					} else if(recordNb==2){
+						System.out.println("The two orders available from the file are below:");
+						System.out.println("  [1]: " + ordMan.getOrder(orderList, 0));
+						System.out.println("  [2]: " + ordMan.getOrder(orderList, 1));
+					} else {
+						System.out.println("The first 3 orders from the file are below:");
+						System.out.println("  [1]: " + ordMan.getOrder(orderList, 0));
+						System.out.println("  [2]: " + ordMan.getOrder(orderList, 1));
+						System.out.println("  [3]: " + ordMan.getOrder(orderList, 2));
+					}
 					
 					System.out.println("\n  All orders: " + ordMan.getAllOrdersToString(orderList));
 					System.out.println("\nDishes by Type:\n  Starters: " + ordMan.getDishesByType(dishList, "st"));
@@ -107,6 +117,10 @@ public class Main {
 					System.out.println("  Halal Meat Dishes: " + ordMan.getDishesByFeature(dishList, "hmd"));
 					System.out.println("  Sea Food Free Dishes: " + ordMan.getDishesByFeature(dishList, "sfd"));
 					
+					System.out.println("\nName of the "+dishList.size()+" different dishes available in the file:");
+					for(Dish d:dishList){
+						System.out.println("  - "+d.getDishName());
+					}
 					System.out.println("\nDish Type Stats:\n      " + ordMan.getStatsByDishType(dishList, "st"));
 					System.out.println("  " + ordMan.getStatsByDishType(dishList, "mc"));
 					System.out.println("      " + ordMan.getStatsByDishType(dishList, "ds"));
@@ -135,6 +149,9 @@ public class Main {
 				if(hasLoadedFile){
 					List<Order> listOrder = fileContent.get(currentFile).getOrderList();
 					System.out.println("\n" + ordMan.getStatsForAllCustomers(listOrder));
+					System.out.println("Stats from all orders:");
+					System.out.println(ordMan.getTypeStatsFromOrders(listOrder));
+					System.out.println(ordMan.getFeatureStatsFromOrders(listOrder));
 				}
 				break;
 			case "x":

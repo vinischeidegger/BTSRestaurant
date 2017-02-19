@@ -94,7 +94,31 @@ public class OrderManager implements OnlineOrderOps<Order, BTSRestaurantDish> {
 					.count(dish -> dish.getOrderType().getText().equalsIgnoreCase(dishType));
 			percentage = ((float)nbOfDishesOfDishType / (float)total) * 100F;
 		}
-		return String.format("%s represents %.2f%% of the Dishes" , BTSRestaurantDish.OrderType.fromString(dishType), percentage);
+		return String.format("%s represents %.2f%% of the available dishes" , BTSRestaurantDish.OrderType.fromString(dishType), percentage);
+	}
+	
+	public String getTypeStatsFromOrders(List<Order> orderList){
+		Map<OrderType, List<BTSRestaurantDish>> orderListByType = orderList.stream().map(order -> order.getDish())
+				.collect(Collectors.groupingBy(BTSRestaurantDish::getOrderType));
+		StringBuilder stats = new StringBuilder();
+		int totalOrders = orderList.size(); 
+		for(OrderType oType : orderListByType.keySet()){
+			stats.append(oType).append(" - ").append(orderListByType.get(oType).size()).append(" of ").append(totalOrders).append(" orders.\n");
+		}
+		return stats.toString();
+	}
+	
+	public String getFeatureStatsFromOrders(List<Order> orderList){
+		StringBuilder stats = new StringBuilder();
+		float orderQty = orderList.size();
+		List<BTSRestaurantDish> dishList = orderList.stream().map(order -> order.getDish()).collect(Collectors.toList());
+		stats.append("Stats from all orders based on their features:\n")
+			.append(String.format("%6.2f",(float)getDishesByFeature(dishList, "vgd").size()*100f/orderQty)).append("% of the ordered dishes are Veggie.\n")
+			.append(String.format("%6.2f",(float)getDishesByFeature(dishList, "gfd").size()*100f/orderQty)).append("% of the ordered dishes are Gluten Free.\n")
+			.append(String.format("%6.2f",(float)getDishesByFeature(dishList, "hmd").size()*100f/orderQty)).append("% of the ordered dishes are Halal Meat.\n")
+			.append(String.format("%6.2f",(float)getDishesByFeature(dishList, "sfd").size()*100f/orderQty)).append("% of the ordered dishes are Sea Food Free.\n");
+
+		return stats.toString();
 	}
 	
 	public String getStatsForAllCustomers(List<Order> orderList) {
@@ -105,7 +129,8 @@ public class OrderManager implements OnlineOrderOps<Order, BTSRestaurantDish> {
 				 Collectors.groupingBy(Order::getCustomerName));
 		for(String customer : orderListByCustomer.keySet()){
 			
-			stats.append("\n   ").append(customer).append(" has ").append(orderListByCustomer.get(customer).size())
+			stats.append("------------------------------------------------------------------\n   ")
+				.append(customer).append(" has ").append(orderListByCustomer.get(customer).size())
 				.append(" orders.\n");
 			
 			List<BTSRestaurantDish> dishesFromCustomer = orderListByCustomer.get(customer).stream()
@@ -115,31 +140,39 @@ public class OrderManager implements OnlineOrderOps<Order, BTSRestaurantDish> {
 				for(BTSRestaurantDish d:dishesFromCustomer) {
 					OrderType oType = d.getOrderType();
 					stats.append("     ").append(d.getDishName().toUpperCase()).append(" - which is a ").append(oType).append(", ");
-					switch (oType) {
-					case STARTER:
-						stats.append("needs ").append(d.getExtras());
-						break;
-					case MAIN_COURSE:
-						String[] extras = d.getExtras().split("-");
-						if(extras.length==2){
-							stats.append("is made of ").append(extras[0]).append(" and goes well with ").append(extras[1]);
-						} else {
-							stats.deleteCharAt(stats.length()-1);
+					String extraValue = d.getExtras();
+					if (extraValue.isEmpty()) {
+						stats.deleteCharAt(stats.length()-1);
+					} else {
+						switch (oType) {
+						case STARTER:
+							stats.append("needs ").append(d.getExtras());
+							break;
+						case MAIN_COURSE:
+							String[] extras = d.getExtras().split("-");
+							if(extras.length==2){
+								stats.append("is made of ").append(extras[0]).append(" and goes well with ").append(extras[1]);
+							} else {
+								stats.deleteCharAt(stats.length()-1);
+							}
+							break;
+						case DESSERT:
+							stats.append("has ").append(d.getExtras()).append(" calories");
+							break;
+						default:
+							log.error("Type not implemented: ["+oType+"]");
+							break;
 						}
-						break;
-					case DESSERT:
-						stats.append("has ").append(d.getExtras()).append(" calories");
-						break;
-					default:
-						break;
 					}
+					stats.append(".\n");
 				}
-				stats.append(".\n\n     Veggie Dishes: ").append((float)getDishesByFeature(dishesFromCustomer, "vgd").size()*100f/totalNbOfDishes)
+				stats.append("\n     Veggie Dishes: ").append((float)getDishesByFeature(dishesFromCustomer, "vgd").size()*100f/totalNbOfDishes)
 				.append("%\n     Gluten Free Dishes: ").append((float)getDishesByFeature(dishesFromCustomer, "gfd").size()*100f/totalNbOfDishes)
 				.append("%\n     Halal Meat Dishes: ").append((float)getDishesByFeature(dishesFromCustomer, "hmd").size()*100f/totalNbOfDishes)
 				.append("%\n     Sea Food Free Dishes: ").append((float)getDishesByFeature(dishesFromCustomer, "sfd").size()*100f/totalNbOfDishes).append("%\n");
 			
 		}
+		stats.append("------------------------------------------------------------------");
 		return stats.toString();
 	}
 
