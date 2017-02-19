@@ -35,6 +35,7 @@ public class BTSRestaurantDish extends Dish {
 	private boolean isVeggie;
 	private boolean isHalal;
 	private boolean isSeaFoodFree;
+	private String extras;
 	private List<Order> orderList = new ArrayList<Order>();
 
 	public BTSRestaurantDish(String dishName, String orderType, String isGlutenFree, String isVeggie, String isHalal, String isSeaFoodFree) {
@@ -77,6 +78,12 @@ public class BTSRestaurantDish extends Dish {
 	public void setSeaFoodFree(boolean isSeaFoodFree) {
 		this.isSeaFoodFree = isSeaFoodFree;
 	}
+	public String getExtras() {
+		return extras;
+	}
+	public void setExtras(String extras) {
+		this.extras = extras;
+	}
 	public List<Order> getOrderList() {
 		return orderList;
 	}
@@ -105,7 +112,7 @@ public class BTSRestaurantDish extends Dish {
 	@Override
 	public String toString() {
 		return "BTSRestaurantDish [dishName=" + dishName + ", orderType=" + orderType + ", isGlutenFree=" + isGlutenFree + ", isVeggie=" + isVeggie + ", isHalal=" + isHalal
-				+ ", isSeaFoodFree=" + isSeaFoodFree + "]";
+				+ ", isSeaFoodFree=" + isSeaFoodFree + ", extras=" + extras + "]";
 	}
 
 	@Override

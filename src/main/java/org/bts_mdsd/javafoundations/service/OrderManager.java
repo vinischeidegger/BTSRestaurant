@@ -4,6 +4,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
 import java.util.stream.Collectors;
 
@@ -11,6 +12,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.bts_mdsd.javafoundations.OnlineOrderOps;
 import org.bts_mdsd.javafoundations.model.BTSRestaurantDish;
+import org.bts_mdsd.javafoundations.model.BTSRestaurantDish.OrderType;
 import org.bts_mdsd.javafoundations.model.FileExtract;
 import org.bts_mdsd.javafoundations.model.Order;
 import org.eclipse.collections.impl.list.mutable.ListAdapter;
@@ -79,6 +81,10 @@ public class OrderManager implements OnlineOrderOps<Order, BTSRestaurantDish> {
 		return dishesFromType;
 	}
 
+	/*
+	 * Method to check the stats by Dish Type and return it into a formatted String
+	 * @see org.bts_mdsd.javafoundations.OnlineOrderOps#getStatsByDishType(java.util.List, java.lang.String)
+	 */
 	@Override
 	public String getStatsByDishType(List<BTSRestaurantDish> dishList, String dishType) {
 		int total = dishList.size();
@@ -88,9 +94,55 @@ public class OrderManager implements OnlineOrderOps<Order, BTSRestaurantDish> {
 					.count(dish -> dish.getOrderType().getText().equalsIgnoreCase(dishType));
 			percentage = ((float)nbOfDishesOfDishType / (float)total) * 100F;
 		}
-		return String.format("%.2f%% of the Dishes are of Dish Type: " + dishType , percentage);
+		return String.format("%s represents %.2f%% of the Dishes" , BTSRestaurantDish.OrderType.fromString(dishType), percentage);
 	}
 	
+	public String getStatsForAllCustomers(List<Order> orderList) {
+		
+		StringBuilder stats = new StringBuilder();
+		
+		Map<String, List<Order>> orderListByCustomer = orderList.stream().collect(
+				 Collectors.groupingBy(Order::getCustomerName));
+		for(String customer : orderListByCustomer.keySet()){
+			
+			stats.append("\n   ").append(customer).append(" has ").append(orderListByCustomer.get(customer).size())
+				.append(" orders.\n");
+			
+			List<BTSRestaurantDish> dishesFromCustomer = orderListByCustomer.get(customer).stream()
+				.map(order -> order.getDish()).collect(Collectors.toList());
+			float totalNbOfDishes = (float) dishesFromCustomer.size();
+			stats.append("   ").append(customer).append(" has ordered ").append(dishesFromCustomer.size()).append(" different dishes:\n");
+				for(BTSRestaurantDish d:dishesFromCustomer) {
+					OrderType oType = d.getOrderType();
+					stats.append("     ").append(d.getDishName().toUpperCase()).append(" - which is a ").append(oType).append(", ");
+					switch (oType) {
+					case STARTER:
+						stats.append("needs ").append(d.getExtras());
+						break;
+					case MAIN_COURSE:
+						String[] extras = d.getExtras().split("-");
+						if(extras.length==2){
+							stats.append("is made of ").append(extras[0]).append(" and goes well with ").append(extras[1]);
+						} else {
+							stats.deleteCharAt(stats.length()-1);
+						}
+						break;
+					case DESSERT:
+						stats.append("has ").append(d.getExtras()).append(" calories");
+						break;
+					default:
+						break;
+					}
+				}
+				stats.append(".\n\n     Veggie Dishes: ").append((float)getDishesByFeature(dishesFromCustomer, "vgd").size()*100f/totalNbOfDishes)
+				.append("%\n     Gluten Free Dishes: ").append((float)getDishesByFeature(dishesFromCustomer, "gfd").size()*100f/totalNbOfDishes)
+				.append("%\n     Halal Meat Dishes: ").append((float)getDishesByFeature(dishesFromCustomer, "hmd").size()*100f/totalNbOfDishes)
+				.append("%\n     Sea Food Free Dishes: ").append((float)getDishesByFeature(dishesFromCustomer, "sfd").size()*100f/totalNbOfDishes).append("%\n");
+			
+		}
+		return stats.toString();
+	}
+
 	/**
 	 * The objective of this method is to read an Order File and load its data in memory
 	 * @param filePath - The complete path of the file containing the orders to be read
@@ -102,7 +154,7 @@ public class OrderManager implements OnlineOrderOps<Order, BTSRestaurantDish> {
 	 * @throws FileNotFoundException 
 	 */
 	public FileExtract generateOrderFromFile(String filePath) throws FileNotFoundException {
-		FileExtract fe = new FileExtract();
+		FileExtract fExtract = new FileExtract();
 		
 		log.debug("Working Directory = " + System.getProperty("user.dir"));
 		
@@ -112,8 +164,7 @@ public class OrderManager implements OnlineOrderOps<Order, BTSRestaurantDish> {
 		List<BTSRestaurantDish> dishList = new ArrayList<BTSRestaurantDish>();
 		
 		/*
-		 * I'm taking in consideration that the default file will have the columns order as the example
-		 * as the documentation says differently
+		 * The default order is taken from the sample file.
 		 */
 		int customerColPos = 0;
 		int dishNameColPos = 1;
@@ -144,6 +195,9 @@ public class OrderManager implements OnlineOrderOps<Order, BTSRestaurantDish> {
 						log.trace("Line [" + numbLines + "], Column [" + i + "], Value [" + values[i] + "]");
 					}
 
+					/*
+					 * The column order is then defined by checking the file header 
+					 */
 					for(int i=0; i<values.length; i++) {
 						switch (values[i].toLowerCase()) {
 						case "customername":
@@ -202,23 +256,23 @@ public class OrderManager implements OnlineOrderOps<Order, BTSRestaurantDish> {
 					}
 					
 					dish.getOrderList().add(newOrder);
+					dish.setExtras(values[extraColPos]);
 					
 					newOrder.setDish(dish);
-					newOrder.setExtras(values[extraColPos]);
 			
 					orderList.add(newOrder);
 				}
 			}
 
-			fe.setDishList(dishList);
-			fe.setOrderList(orderList);
+			fExtract.setDishList(dishList);
+			fExtract.setOrderList(orderList);
 
 		}
 		catch (Exception e) {
 			throw e;
 		}
 		
-		return fe;
+		return fExtract;
 
 	}
 
